@@ -17,7 +17,9 @@ const client = new Client({
     ]
 });
 
-const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, {
+    baseUrl: "https://generativelanguage.googleapis.com"
+});
 const model = ai.getGenerativeModel({ 
     model: "gemini-2.0-flash",
     systemInstruction: "Eres un asistente de IA inteligente y divertido metido en un comando de Discord."
