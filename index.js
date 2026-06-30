@@ -1,18 +1,21 @@
 require('dotenv').config();
 
 const http = require('http');
-// Servidor básico para que Render no tumbe el bot
 http.createServer((req, res) => {
-    res.write("¡Ruby en línea!");
+    res.write("¡Bot 100% Despierto!");
     res.end();
 }).listen(process.env.PORT || 3000);
 
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
-// Tu API Key limpia
-const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || AQ.Ab8RN6K1KPYE-OjxneEgSrv4MVKwdxH_JfAbnq5fREOg12PKmg;
+// Dejamos la clave configurada para que lea la que pusiste en Render o la que pongas aquí
+const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || "TU_API_KEY_AQUÍ";
+
+const ai = new GoogleGenerativeAI(MI_CLAVE_SECRETA);
+const model = ai.getGenerativeModel({ model: "gemini-pro" });
 
 client.once('ready', async () => {
     console.log(`🤖 ¡Bot conectado como ${client.user.tag}!`);
@@ -31,49 +34,22 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.commandName === 'ask') {
         try {
-            // Le dice a Discord que espere (da un margen de hasta 15 minutos)
             await interaction.deferReply(); 
         } catch (err) {
-            console.error("Error al diferir interacción:", err);
+            console.error("Discord cerró la puerta por tardar más de 3 segundos:", err);
             return;
         }
 
         const preguntaUsuario = interaction.options.getString('pregunta');
 
         try {
-            // URL oficial de Gemini 1.5 Flash por HTTP directo
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${MI_CLAVE_SECRETA}`;
-            
-            const response = await globalThis.fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [{ text: preguntaUsuario }]
-                    }]
-                })
-            });
-
-            const data = await response.json();
-            
-            // Procesamos la respuesta directa de Google
-            if (data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
-                const respuestaIA = data.candidates[0].content.parts[0].text;
-                
-                // Cortar texto si pasa los 2000 caracteres de Discord
-                const mensajeFinal = respuestaIA.length > 1990 ? respuestaIA.substring(0, 1990) + "..." : respuestaIA;
-                
-                // Imprime única y exclusivamente la respuesta limpia de la IA
-                await interaction.editReply(mensajeFinal);
-            } else {
-                console.error("Estructura de respuesta inesperada:", JSON.stringify(data));
-                throw new Error("No se recibió texto válido de la API");
-            }
-
+            const resultado = await model.generateContent(preguntaUsuario);
+            const respuestaIA = resultado.response.text();
+            await interaction.editReply(`**Pregunta:** ${preguntaUsuario}\n\n🤖 **Respuesta:** ${respuestaIA}`);
         } catch (error) {
-            console.error("❌ ERROR DETALLADO EN PETICIÓN:", error);
+            console.error("🔥 ERROR REAL DE GEMINI:", error);
             try {
-                await interaction.editReply('❌ Hubo un problema al obtener la respuesta de la IA.');
+                await interaction.editReply('❌ Hubo un error al conectar con Gemini. Comprueba tu API Key.');
             } catch (e) {}
         }
     }
