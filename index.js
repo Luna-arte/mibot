@@ -1,5 +1,11 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+// PARCHE PARA EVITAR QUE RENDER TUMBÉ EL BOT GRATUITO
+const http = require('http');
+http.createServer((req, res) => {
+    res.write("¡Bot en línea!");
+    res.end();
+}).listen(process.env.PORT || 3000);
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const client = new Client({
