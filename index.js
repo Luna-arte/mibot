@@ -12,7 +12,7 @@ const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
 // Tu API Key limpia
-const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || "AQ.Ab8RN6K1KPYE-OjxneEgSrv4MVKwdxH_JfAbnq5fREOg12PKmg";
+const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || AQ.Ab8RN6K1KPYE-OjxneEgSrv4MVKwdxH_JfAbnq5fREOg12PKmg;
 
 client.once('ready', async () => {
     console.log(`🤖 ¡Bot conectado como ${client.user.tag}!`);
