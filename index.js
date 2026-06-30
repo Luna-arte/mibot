@@ -12,7 +12,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
 // Dejamos la clave configurada para que lea la que pusiste en Render o la que pongas aquí
-const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || AQ.Ab8RN6JyfOcG1fhdCNSbgGgo3S3PD9jgT49neLd0A0FPvhlRiQ;
+const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || "AQ.Ab8RN6JyfOcG1fhdCNSbgGgo3S3PD9jgT49neLd0A0FPvhlRiQ";
 
 const ai = new GoogleGenerativeAI(MI_CLAVE_SECRETA);
 const model = ai.getGenerativeModel({ model: "gemini-pro" });
