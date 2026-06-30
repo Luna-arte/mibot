@@ -7,75 +7,56 @@ http.createServer((req, res) => {
     res.end();
 }).listen(process.env.PORT || 3000);
 
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+// IMPORTANTE: Añadimos MessageContent para que el bot pueda leer el chat
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent 
     ]
 });
 
 const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = ai.getGenerativeModel({ 
     model: "gemini-2.0-flash",
-    systemInstruction: "Eres un asistente de IA inteligente y divertido metido en un comando de Discord."
+    systemInstruction: "Eres un asistente de IA inteligente y divertido metido en un bot de Discord."
 });
 
-client.once('ready', async () => {
-    console.log(`🤖 ¡Bot conectado como ${client.user.tag}!`);
-
-    const askCommand = new SlashCommandBuilder()
-        .setName('ask')
-        .setDescription('Hazle una pregunta a la Inteligencia Artificial')
-        .addStringOption(option => 
-            option.setName('pregunta')
-                .setDescription('Lo que le quieres preguntar a la IA')
-                .setRequired(true)
-        );
-
-    try {
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: [askCommand.toJSON()] }
-        );
-        console.log('✅ ¡Comando /ask registrado con éxito globalmente!');
-    } catch (error) {
-        console.error('Error al registrar el comando:', error);
-    }
+client.once('ready', () => {
+    console.log(`🤖 ¡Bot conectado con éxito como ${client.user.tag}!`);
+    console.log('💡 Ahora el bot responderá cuando escribas: !ask [tu pregunta]');
 });
 
-client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
+// Escuchamos los mensajes del chat
+client.on('messageCreate', async (message) => {
+    // Ignoramos los mensajes de otros bots para evitar bucles
+    if (message.author.bot) return;
 
-    if (interaction.commandName === 'ask') {
-        // 1. LE DECIMOS A DISCORD INMEDIATAMENTE QUE ESPERE (EVITA EL ERROR 10062)
-        try {
-            await interaction.deferReply();
-        } catch (err) {
-            console.error("Error al hacer defer:", err);
-            return;
+    // Comprobamos si el mensaje empieza por !ask
+    if (message.content.startsWith('!ask ')) {
+        const preguntaUsuario = message.content.slice(5).trim(); // Quitamos el "!ask "
+
+        if (!preguntaUsuario) {
+            return message.reply('¡Dime qué quieres preguntarle a la IA! Ejemplo: `!ask hola`');
         }
 
-        const preguntaUsuario = interaction.options.getString('pregunta');
-
         try {
-            // 2. LLAMAMOS A GEMINI SIN PRISA
+            // Ponemos el estado de "Escribiendo..." en Discord para avisar que está pensando
+            await message.channel.sendTyping();
+
+            // Llamamos a Gemini
             const resultado = await model.generateContent(preguntaUsuario);
             const respuestaIA = resultado.response.text();
 
-            // 3. EDITAMOS LA RESPUESTA CUANDO ESTÉ LISTA
-            await interaction.editReply(`**Pregunta:** ${preguntaUsuario}\n\n🤖 **Respuesta:** ${respuestaIA}`);
+            // Respondemos directamente al mensaje del usuario
+            await message.reply(`🤖 **Respuesta:** ${respuestaIA}`);
 
         } catch (error) {
             console.error("Error directo de Gemini:", error);
-            try {
-                await interaction.editReply('❌ Hubo un error al intentar obtener respuesta de la IA. Verifica tu API Key.');
-            } catch (e) {
-                console.error("No se pudo enviar el mensaje de error final:", e);
-            }
+            await message.reply('❌ Hubo un error al intentar obtener respuesta de la IA. Comprueba los logs.');
         }
     }
 });
