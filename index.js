@@ -11,11 +11,12 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
 
-// Pega tu API Key directamente aquí abajo entre las comillas para asegurar que la lea sí o sí
+// Forzamos la lectura de la clave
 const MI_CLAVE_SECRETA = process.env.GEMINI_API_KEY || "AQ.Ab8RN6K1KPYE-OjxneEgSrv4MVKwdxH_JfAbnq5fREOg12PKmg";
 
 const ai = new GoogleGenerativeAI(MI_CLAVE_SECRETA);
-const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+// Cambiado a gemini-1.5-flash: Máxima velocidad y capacidad para preguntas difíciles
+const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 client.once('ready', async () => {
     console.log(`🤖 ¡Bot conectado con éxito como ${client.user.tag}!`);
@@ -26,8 +27,7 @@ client.once('ready', async () => {
     try {
         const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
         await rest.put(Routes.applicationCommands(client.user.id), { body: [askCommand.toJSON()] });
-        console.log('✅ Comando de barra registrado de forma global.');
-    } catch (e) { console.error("Error al registrar comando:", e); }
+    } catch (e) { console.error(e); }
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -37,7 +37,6 @@ client.on('interactionCreate', async (interaction) => {
         try {
             await interaction.deferReply(); 
         } catch (err) {
-            console.error("Discord rechazó la interacción por tiempo:", err);
             return;
         }
 
@@ -47,12 +46,15 @@ client.on('interactionCreate', async (interaction) => {
             const resultado = await model.generateContent(preguntaUsuario);
             const respuestaIA = resultado.response.text();
             
-            const mensajeFinal = respuestaIA.length > 1900 ? respuestaIA.substring(0, 1900) + "..." : respuestaIA;
-            await interaction.editReply(`**Pregunta:** ${preguntaUsuario}\n\n🤖 **Respuesta:** ${mensajeFinal}`);
+            // Recortamos por si supera el límite estricto de Discord (2000 caracteres)
+            const mensajeFinal = respuestaIA.length > 1990 ? respuestaIA.substring(0, 1990) + "..." : respuestaIA;
+            
+            // Envía única y exclusivamente la respuesta directa de la IA
+            await interaction.editReply(mensajeFinal);
         } catch (error) {
-            console.error("❌ ERROR DETALLADO DE GEMINI:", error.message || error);
+            console.error("❌ Error de Gemini:", error);
             try {
-                await interaction.editReply('❌ Hubo un error al conectar con Gemini. Comprueba los logs.');
+                await interaction.editReply('❌ Hubo un error al procesar tu pregunta.');
             } catch (e) {}
         }
     }
